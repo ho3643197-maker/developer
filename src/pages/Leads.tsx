@@ -6,7 +6,7 @@ import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { useAuth } from '../contexts/AuthContext';
 import { Lead, LeadStatus } from '../types';
-import { cn, formatDate } from '../lib/utils';
+import { cn, formatDateTime } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { getMockData, saveMockData } from '../lib/storage';
 
@@ -255,7 +255,7 @@ const Leads: React.FC = () => {
               ) : (
                 filteredLeads.map((lead) => (
                   <tr key={lead.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 text-sm text-slate-600">{formatDate(lead.date)}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600">{formatDateTime(lead.date)}</td>
                     <td className="px-6 py-4 font-medium text-slate-900">{lead.name}</td>
                     <td className="px-6 py-4 text-sm text-slate-600">{lead.phone}</td>
                     <td className="px-6 py-4 text-sm text-slate-600">{lead.source}</td>
@@ -292,10 +292,10 @@ const Leads: React.FC = () => {
       >
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
           <Input 
-            label="Tanggal" 
-            type="date" 
-            value={selectedLead ? selectedLead.date.split('T')[0] : new Date().toISOString().split('T')[0]} 
+            label="Tanggal & Jam" 
+            value={selectedLead ? formatDateTime(selectedLead.date) : formatDateTime(new Date())} 
             readOnly 
+            className="bg-slate-50 cursor-not-allowed"
           />
           <Input 
             label="Nama" 

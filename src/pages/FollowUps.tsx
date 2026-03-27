@@ -6,7 +6,7 @@ import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { useAuth } from '../contexts/AuthContext';
 import { FollowUp, Lead, LeadStatus } from '../types';
-import { cn, formatDate } from '../lib/utils';
+import { cn, formatDateTime } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { getMockData, saveMockData } from '../lib/storage';
 
@@ -269,7 +269,7 @@ const FollowUps: React.FC = () => {
                     <td className="px-6 py-4 text-sm text-slate-600">
                       <div className="flex items-center gap-2">
                         <Clock className="w-3 h-3 text-slate-400" />
-                        {new Date(f.date_time).toLocaleString('id-ID')}
+                        {formatDateTime(f.date_time)}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -311,10 +311,9 @@ const FollowUps: React.FC = () => {
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
           <Input 
             label="Tanggal & Jam" 
-            type="datetime-local" 
-            value={formData.date_time} 
-            onChange={(e) => setFormData({ ...formData, date_time: e.target.value })}
-            required
+            value={selectedFollowUp ? formatDateTime(selectedFollowUp.date_time) : formatDateTime(new Date())} 
+            readOnly 
+            className="bg-slate-50 cursor-not-allowed"
           />
           <div>
             <label className="text-sm font-medium text-slate-700 mb-1.5 block">Pilih Calon Konsumen</label>
