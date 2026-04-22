@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import { useAuth } from '../contexts/AuthContext';
 import { MarketingStaff } from '../types';
@@ -20,7 +21,7 @@ const MarketingMaster: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    position: '',
+    position: 'Marketing' as any,
     address: ''
   });
 
@@ -33,8 +34,12 @@ const MarketingMaster: React.FC = () => {
       setLoading(true);
       if (isMockMode) {
         const defaultStaff: MarketingStaff[] = [
-          { id: '1', name: 'Rina', address: 'Jl. Melati No. 123', phone: '081234567890', position: 'Senior Marketing' },
-          { id: '2', name: 'Doni', address: 'Jl. Mawar No. 45', phone: '081234567891', position: 'Junior Marketing' }
+          { id: '1', name: 'Rina', address: 'Jl. Melati No. 123', phone: '081234567890', position: 'Marketing' },
+          { id: '2', name: 'Doni', address: 'Jl. Mawar No. 45', phone: '081234567891', position: 'Supervisor' },
+          { id: '3', name: 'Budi Staf', address: 'Jl. Utama No. 1', phone: '081234567892', position: 'Marketing' },
+          { id: '4', name: 'Andi Manager', address: 'Jl. Bisnis No. 10', phone: '081234567893', position: 'Manager' },
+          { id: '5', name: 'Joko Makelar', address: 'Jl. Pasar No. 5', phone: '081234567894', position: 'Makelar' },
+          { id: '6', name: 'Susi Freelance', address: 'Jl. Merdeka No. 8', phone: '081234567895', position: 'Freelance' }
         ];
         setStaff(getMockData<MarketingStaff>('marketing_staff', defaultStaff));
         return;
@@ -138,7 +143,7 @@ const MarketingMaster: React.FC = () => {
     setFormData({
       name: '',
       phone: '',
-      position: '',
+      position: 'Marketing',
       address: ''
     });
     setIsModalOpen(true);
@@ -157,7 +162,7 @@ const MarketingMaster: React.FC = () => {
             variant="ghost" 
             size="sm" 
             onClick={() => {
-              localStorage.removeItem('user_division');
+              
               setDivision(null);
             }}
             className="p-2 h-auto"
@@ -277,11 +282,17 @@ const MarketingMaster: React.FC = () => {
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             required
           />
-          <Input 
+          <Select 
             label="Jabatan" 
-            placeholder="Contoh: Senior Marketing" 
+            options={[
+              { label: 'Marketing', value: 'Marketing' },
+              { label: 'Supervisor', value: 'Supervisor' },
+              { label: 'Manager', value: 'Manager' },
+              { label: 'Makelar', value: 'Makelar' },
+              { label: 'Freelance', value: 'Freelance' }
+            ]}
             value={formData.position}
-            onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+            onChange={(e) => setFormData({ ...formData, position: e.target.value as any })}
             required
           />
           <div>

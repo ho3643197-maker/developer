@@ -53,7 +53,7 @@ const Customers: React.FC = () => {
         .order('full_name', { ascending: true });
 
       if (error) throw error;
-      setCustomers(data || []);
+      setCustomers(data?.filter(item => item.id && item.full_name) || []);
     } catch (error) {
       console.error('Error fetching customers:', error);
     } finally {
@@ -93,7 +93,7 @@ const Customers: React.FC = () => {
             variant="ghost" 
             size="sm" 
             onClick={() => {
-              localStorage.removeItem('user_division');
+              
               setDivision(null);
             }}
             className="p-2 h-auto"

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   TrendingUp, 
   Users, 
@@ -48,6 +49,7 @@ import { formatDate, formatCurrency, formatNumber, cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { profile, isMockMode, division, setDivision } = useAuth();
   const [stats, setStats] = useState({
     // Marketing Stats
@@ -424,7 +426,7 @@ const Dashboard: React.FC = () => {
             variant="outline" 
             size="md" 
             onClick={() => {
-              localStorage.removeItem('user_division');
+              
               setDivision(null);
             }}
             className="rounded-2xl border-slate-200/60"
@@ -432,7 +434,12 @@ const Dashboard: React.FC = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Ganti Divisi
           </Button>
-          <Button variant="primary" size="md" className="rounded-2xl">
+          <Button 
+            variant="primary" 
+            size="md" 
+            className="rounded-2xl"
+            onClick={() => navigate('/reports')}
+          >
             Laporan Detail
             <ChevronRight className="w-4 h-4 ml-2" />
           </Button>

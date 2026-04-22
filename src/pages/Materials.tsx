@@ -108,7 +108,7 @@ const Materials: React.FC = () => {
             variant="ghost" 
             size="sm" 
             onClick={() => {
-              localStorage.removeItem('user_division');
+              
               setDivision(null);
             }}
             className="p-2 h-auto"

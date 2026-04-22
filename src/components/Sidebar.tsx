@@ -73,6 +73,12 @@ const Sidebar: React.FC = () => {
       divisions: ['marketing', 'audit'] 
     },
     { 
+      name: 'Data Pelanggan', 
+      icon: Users, 
+      path: '/customers', 
+      divisions: ['marketing', 'audit'] 
+    },
+    { 
       name: 'Master Promo', 
       icon: Tag, 
       path: '/promos', 
@@ -108,6 +114,12 @@ const Sidebar: React.FC = () => {
       path: '/marketing-master', 
       divisions: ['marketing'] 
     },
+    { 
+      name: 'Laporan Rekapan', 
+      icon: BarChart3, 
+      path: '/reports', 
+      divisions: ['marketing', 'audit'] 
+    },
 
     // Teknik Specific Menus
     { 
@@ -138,6 +150,12 @@ const Sidebar: React.FC = () => {
       name: 'Stok Material', 
       icon: Package, 
       path: '/materials', 
+      divisions: ['teknik', 'audit'] 
+    },
+    { 
+      name: 'Purchase Order', 
+      icon: ShoppingCart, 
+      path: '/purchase-orders', 
       divisions: ['teknik', 'audit'] 
     },
     { 
@@ -338,7 +356,7 @@ const Sidebar: React.FC = () => {
         <div className="space-y-2">
           <button
             onClick={() => {
-              localStorage.removeItem('user_division');
+              
               setDivision(null);
             }}
             className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-500 hover:text-primary transition-all duration-200 group"

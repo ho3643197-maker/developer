@@ -1,5 +1,5 @@
 import React from "react";
-import { Switch, Route, Redirect, useLocation } from "wouter";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -69,10 +69,10 @@ function ProtectedRoute({ component: Component, menuKey }: { component: React.Co
   }
 
   // If there's a permissions error but we have a user (especially admin), we might want to proceed or show a specific error
-  if (!user) return <Redirect to="/login" />;
+  if (!user) return <Navigate to="/login" />;
 
   if (menuKey && !can(menuKey, "view")) {
-    return <Redirect to="/" />;
+    return <Navigate to="/" />;
   }
 
   return <Component />;
@@ -134,10 +134,10 @@ function Router() {
           <Route path="/role-selection" component={() => <ProtectedRoute component={RoleSelection} />} />
           
           {/* Legacy Routing Aliases -> Super App Home */}
-          <Route path="/salesman" component={() => <Redirect to="/" />} />
-          <Route path="/admin" component={() => <Redirect to="/" />} />
-          <Route path="/promo" component={() => <Redirect to="/" />} />
-          <Route path="/gudang" component={() => <Redirect to="/" />} />
+          <Route path="/salesman" element={<Navigate to="/" />} />
+          <Route path="/admin" element={<Navigate to="/" />} />
+          <Route path="/promo" element={<Navigate to="/" />} />
+          <Route path="/gudang" element={<Navigate to="/" />} />
           
           {/* Main Super App Dashboard / Home */}
           <Route path="/" component={() => <ProtectedRoute component={Dashboard} />} />

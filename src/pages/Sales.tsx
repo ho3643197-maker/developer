@@ -11,6 +11,9 @@ import { SaleForm } from '../components/forms/SaleForm';
 import { useAuth } from '../contexts/AuthContext';
 import { getMockData } from '../lib/storage';
 import { Pagination } from '../components/ui/Pagination';
+import { SaleDetailKIP } from '../components/sales/SaleDetailKIP';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 
 const Sales: React.FC = () => {
   const { isMockMode, division, setDivision } = useAuth();
@@ -19,6 +22,8 @@ const Sales: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [isKIPModalOpen, setIsKIPModalOpen] = useState(false);
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -129,6 +134,66 @@ const Sales: React.FC = () => {
     fetchSales();
   };
 
+  const handleShowDetail = (sale: Sale) => {
+    setSelectedSale(sale);
+    setIsKIPModalOpen(true);
+  };
+
+  const handlePrintInvoice = (sale: Sale) => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(22);
+    doc.setTextColor(79, 70, 229); // Indigo-600
+    doc.text('INVOICE PENJUALAN', 105, 20, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`No. Transaksi: INV-${sale.id.slice(0, 8).toUpperCase()}`, 105, 28, { align: 'center' });
+    doc.text(`Tanggal: ${formatDate(sale.sale_date)}`, 105, 33, { align: 'center' });
+
+    // Customer & Unit Info
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.text('PELANGGAN:', 20, 50);
+    doc.setFontSize(10);
+    doc.text(`${sale.customer?.full_name}`, 20, 56);
+    doc.text(`${sale.customer?.phone || ''}`, 20, 61);
+
+    doc.setFontSize(12);
+    doc.text('UNIT PROPERTI:', 120, 50);
+    doc.setFontSize(10);
+    doc.text(`${sale.unit?.project?.name}`, 120, 56);
+    doc.text(`Blok/Unit: ${sale.unit?.unit_number}`, 120, 61);
+
+    // Table
+    (doc as any).autoTable({
+      startY: 75,
+      head: [['Keterangan', 'Jumlah']],
+      body: [
+        ['Harga Jual Unit', formatCurrency(sale.total_price + sale.discount)],
+        ['Potongan Harga (Discount)', `-${formatCurrency(sale.discount)}`],
+        ['Promo', sale.promo ? `-${formatCurrency(sale.promo.value)}` : '-'],
+        ['Total Akhir (Nett)', formatCurrency(sale.final_price)],
+        ['Booking Fee Terbayar', formatCurrency(sale.booking_fee)],
+      ],
+      theme: 'striped',
+      headStyles: { fillStyle: [79, 70, 229] },
+      columnStyles: {
+        1: { halign: 'right' }
+      }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY;
+    
+    doc.setFontSize(14);
+    doc.text('SISA PIUTANG:', 120, finalY + 20);
+    doc.setTextColor(225, 29, 72); // Rose-600
+    doc.text(formatCurrency(sale.final_price - sale.booking_fee), 200, finalY + 20, { align: 'right' });
+
+    doc.save(`Invoice_${sale.customer?.full_name}_${sale.unit?.unit_number}.pdf`);
+  };
+
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
@@ -139,7 +204,7 @@ const Sales: React.FC = () => {
             variant="ghost" 
             size="sm" 
             onClick={() => {
-              localStorage.removeItem('user_division');
+              
               setDivision(null);
             }}
             className="p-2 h-auto"
@@ -167,6 +232,20 @@ const Sales: React.FC = () => {
           onSuccess={handleSuccess} 
           onCancel={() => setIsModalOpen(false)} 
         />
+      </Modal>
+
+      <Modal 
+        isOpen={isKIPModalOpen} 
+        onClose={() => setIsKIPModalOpen(false)} 
+        title="Detail Kartu Induk Penjualan (KIP)"
+        size="xl"
+      >
+        {selectedSale && (
+          <SaleDetailKIP 
+            sale={selectedSale} 
+            onClose={() => setIsKIPModalOpen(false)} 
+          />
+        )}
       </Modal>
 
       <Card className="p-0 overflow-hidden">
@@ -249,10 +328,22 @@ const Sales: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Invoice">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0" 
+                          title="Invoice"
+                          onClick={() => handlePrintInvoice(sale)}
+                        >
                           <FileText className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Detail">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0" 
+                          title="Detail"
+                          onClick={() => handleShowDetail(sale)}
+                        >
                           <ShoppingBag className="w-4 h-4" />
                         </Button>
                       </div>

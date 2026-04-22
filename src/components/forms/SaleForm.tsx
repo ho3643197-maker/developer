@@ -58,7 +58,12 @@ export const SaleForm: React.FC<SaleFormProps> = ({ onSuccess, onCancel }) => {
   const [units, setUnits] = useState<{ id: string; unit_number: string; price: number; project_id: string }[]>([]);
   const [customers, setCustomers] = useState<{ id: string; full_name: string }[]>([]);
   const [marketingStaff, setMarketingStaff] = useState<{ id: string; full_name: string }[]>([]);
+  const [supervisors, setSupervisors] = useState<{ id: string; name: string }[]>([]);
+  const [managers, setManagers] = useState<{ id: string; name: string }[]>([]);
+  const [makelars, setMakelars] = useState<{ id: string; name: string }[]>([]);
+  const [freelances, setFreelances] = useState<{ id: string; name: string }[]>([]);
   const [promos, setPromos] = useState<{ id: string; name: string; value: number }[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
   const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<SaleFormValues>({
     resolver: zodResolver(saleSchema),
@@ -89,26 +94,60 @@ export const SaleForm: React.FC<SaleFormProps> = ({ onSuccess, onCancel }) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (isMockMode) {
-        setProjects(getMockData('projects', [{ id: '1', name: 'Griya Asri Residence' }]));
-        setUnits(getMockData('units', [{ id: '1', unit_number: 'A-01', price: 350000000, project_id: '1', status: 'available' }]));
-        setCustomers(getMockData('customers', [{ id: '1', full_name: 'Budi Santoso' }]));
-        setMarketingStaff(getMockData('profiles', [{ id: 'mock-admin-id', full_name: 'Admin Demo', role: 'marketing' }]).filter((p: any) => p.role === 'marketing'));
-        setPromos(getMockData('promos', [{ id: '1', name: 'Promo Ramadhan', value: 10000000 }]));
-        return;
+      try {
+        setDataLoading(true);
+        if (isMockMode) {
+          setProjects(getMockData('projects', [{ id: '1', name: 'Griya Asri Residence' }]));
+          setUnits(getMockData('units', [{ id: '1', unit_number: 'A-01', price: 350000000, project_id: '1', status: 'available' }]));
+          setCustomers(getMockData('customers', [{ id: '1', full_name: 'Budi Santoso' }, { id: '2', full_name: 'Dedi Kurniawan' }]));
+          setMarketingStaff(getMockData('profiles', [{ id: 'mock-admin-id', full_name: 'Admin Demo', role: 'marketing' }]).filter((p: any) => p.role === 'marketing'));
+          
+          const mockMS = getMockData('marketing_staff', [
+            { id: '1', name: 'Rina', position: 'Marketing' },
+            { id: '2', name: 'Doni', position: 'Supervisor' },
+            { id: '4', name: 'Andi Manager', position: 'Manager' },
+            { id: '5', name: 'Joko Makelar', position: 'Makelar' },
+            { id: '6', name: 'Susi Freelance', position: 'Freelance' }
+          ]);
+          
+          setSupervisors(mockMS.filter((s: any) => s.position === 'Supervisor'));
+          setManagers(mockMS.filter((s: any) => s.position === 'Manager'));
+          setMakelars(mockMS.filter((s: any) => s.position === 'Makelar'));
+          setFreelances(mockMS.filter((s: any) => s.position === 'Freelance'));
+
+          setPromos(getMockData('promos', [{ id: '1', name: 'Promo Ramadhan', value: 10000000 }]));
+          return;
+        }
+
+        const { data: p } = await supabase.from('projects').select('id, name');
+        const { data: u } = await supabase.from('units').select('id, unit_number, price, project_id').eq('status', 'available');
+        const { data: c } = await supabase.from('customers').select('id, full_name');
+        const { data: m } = await supabase.from('profiles').select('id, full_name').eq('role', 'marketing');
+        const { data: ms } = await supabase.from('marketing_staff').select('id, name, position');
+        const { data: pr } = await supabase.from('promos').select('id, name, value');
+
+        setProjects(p || []);
+        setUnits(u || []);
+        setCustomers(c?.filter(item => item.id && item.full_name) || []);
+        setMarketingStaff(m || []);
+        setPromos(pr || []);
+
+        if (ms) {
+          setSupervisors(ms.filter(s => s.position === 'Supervisor'));
+          setManagers(ms.filter(s => s.position === 'Manager'));
+          setMakelars(ms.filter(s => s.position === 'Makelar'));
+          setFreelances(ms.filter(s => s.position === 'Freelance'));
+          
+          // If profiles are empty, use marketing_staff with 'Marketing' position
+          if (!m || m.length === 0) {
+            setMarketingStaff(ms.filter(s => s.position === 'Marketing').map(s => ({ id: s.id, full_name: s.name })));
+          }
+        }
+      } catch (e) {
+        console.error('Error fetching form data:', e);
+      } finally {
+        setDataLoading(false);
       }
-
-      const { data: p } = await supabase.from('projects').select('id, name');
-      const { data: u } = await supabase.from('units').select('id, unit_number, price, project_id').eq('status', 'available');
-      const { data: c } = await supabase.from('customers').select('id, full_name');
-      const { data: m } = await supabase.from('profiles').select('id, full_name').eq('role', 'marketing');
-      const { data: pr } = await supabase.from('promos').select('id, name, value');
-
-      setProjects(p || []);
-      setUnits(u || []);
-      setCustomers(c || []);
-      setMarketingStaff(m || []);
-      setPromos(pr || []);
     };
     fetchData();
   }, [isMockMode]);
@@ -221,7 +260,15 @@ export const SaleForm: React.FC<SaleFormProps> = ({ onSuccess, onCancel }) => {
   const filteredUnits = units.filter(u => u.project_id === watchProjectId);
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-h-[70vh] overflow-y-auto px-1">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-h-[70vh] overflow-y-auto px-1 relative">
+      {dataLoading && (
+        <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-50 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-2">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <p className="text-xs font-bold text-slate-500">Memuat data...</p>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input label="Tanggal Transaksi" type="date" {...register('sale_date')} error={errors.sale_date?.message} />
         <Select 
@@ -255,13 +302,33 @@ export const SaleForm: React.FC<SaleFormProps> = ({ onSuccess, onCancel }) => {
           {...register('marketing_id')}
           error={errors.marketing_id?.message}
         />
-        <Input label="Supervisor" {...register('supervisor')} />
+        <Select 
+          label="Supervisor" 
+          options={supervisors.map(s => ({ label: s.name, value: s.name }))}
+          {...register('supervisor')}
+          error={errors.supervisor?.message}
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Input label="Manager" {...register('manager')} />
-        <Input label="Makelar" {...register('makelar')} />
-        <Input label="Freelance" {...register('freelance')} />
+        <Select 
+          label="Manager" 
+          options={managers.map(s => ({ label: s.name, value: s.name }))}
+          {...register('manager')}
+          error={errors.manager?.message}
+        />
+        <Select 
+          label="Makelar" 
+          options={makelars.map(s => ({ label: s.name, value: s.name }))}
+          {...register('makelar')}
+          error={errors.makelar?.message}
+        />
+        <Select 
+          label="Freelance" 
+          options={freelances.map(s => ({ label: s.name, value: s.name }))}
+          {...register('freelance')}
+          error={errors.freelance?.message}
+        />
       </div>
 
       <div className="border-t border-slate-100 pt-4">

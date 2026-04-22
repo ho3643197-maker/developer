@@ -18,6 +18,25 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Cookie helpers
+const getCookie = (name: string) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift();
+  return null;
+};
+
+const setCookie = (name: string, value: string, days = 30) => {
+  const d = new Date();
+  d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+  const expires = "expires=" + d.toUTCString();
+  document.cookie = name + "=" + value + ";" + expires + ";path=/";
+};
+
+const eraseCookie = (name: string) => {
+  document.cookie = name + '=; Max-Age=-99999999;path=/';
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -27,7 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setDivision = (div: Division) => {
     setDivisionState(div);
-    localStorage.setItem('propdev_division', div);
+    setCookie('propdev_division', div || '');
   };
 
   const mockLogin = () => {
@@ -53,8 +72,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Restore division from localStorage
-    const savedDivision = localStorage.getItem('propdev_division') as Division | null;
+    // Restore division from cookies
+    const savedDivision = getCookie('propdev_division') as Division | null;
     if (savedDivision) {
       setDivisionState(savedDivision);
     }
@@ -64,21 +83,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id, session.user.email);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    // Listen for changes on auth state (logged in, signed out, etc.)
+    // Only use onAuthStateChange, it handles initial session too
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id, session.user.email);
+      const currentSession = session || (await supabase.auth.getSession()).data.session;
+      setUser(currentSession?.user ?? null);
+      if (currentSession?.user) {
+        await fetchProfile(currentSession.user.id, currentSession.user.email);
       } else {
         setProfile(null);
         setLoading(false);
@@ -90,11 +100,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (userId: string, userEmail?: string) => {
     try {
-      const { data, error } = await supabase
+      // Add a timeout to prevent hanging the app if Supabase is slow
+      const profilePromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request Timeout')), 10000)
+      );
+
+      const { data, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
 
       if (error) {
         if (error.code === 'PGRST116') {
@@ -132,7 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setProfile(null);
     setDivisionState(null);
-    localStorage.removeItem('propdev_division');
+    eraseCookie('propdev_division');
   };
 
   return (

@@ -1,6 +1,7 @@
 export type UserRole = 'admin' | 'marketing' | 'owner' | 'teknik' | 'keuangan' | 'audit' | 'hrd' | 'accounting';
 
 export type LeadStatus = 'no respon' | 'low' | 'medium' | 'hot';
+export type MarketingPosition = 'Marketing' | 'Supervisor' | 'Manager' | 'Makelar' | 'Freelance';
 
 export interface Profile {
   id: string;
@@ -89,7 +90,7 @@ export interface MarketingStaff {
   name: string;
   address: string;
   phone: string;
-  position: string;
+  position: MarketingPosition;
 }
 
 export interface MarketingSchedule {
