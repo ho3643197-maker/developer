@@ -75,20 +75,21 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  log("Starting server initialization...");
-  const dbUrl = process.env.DATABASE_URL || "";
-  if (dbUrl) {
-    const redacted = dbUrl.replace(/:([^@]+)@/, ":****@");
-    log(`DATABASE_URL: ${redacted}`);
-  } else {
-    log("WARNING: DATABASE_URL is not set!");
-  }
-
   try {
+    log("Starting server initialization...");
+    const dbUrl = process.env.DATABASE_URL || "";
+    if (dbUrl) {
+      const redacted = dbUrl.replace(/:([^@]+)@/, ":****@");
+      log(`DATABASE_URL: ${redacted}`);
+    } else {
+      log("WARNING: DATABASE_URL is not set!");
+    }
+
     log("Step 0: Running database migrations...");
     try {
       const { db } = await import("./db");
       const { sql } = await import("drizzle-orm");
+      
       await db.execute(sql`
         ALTER TABLE IF EXISTS users 
         ADD COLUMN IF NOT EXISTS authorized_dashboards jsonb DEFAULT '["gudang"]'::jsonb NOT NULL;
@@ -198,35 +199,24 @@ app.use((req, res, next) => {
         ALTER TABLE IF EXISTS items ADD COLUMN IF NOT EXISTS retail_price INTEGER DEFAULT 0 NOT NULL;
         ALTER TABLE IF EXISTS items ADD COLUMN IF NOT EXISTS semi_wholesale_price INTEGER DEFAULT 0 NOT NULL;
 
-        -- Copy retail_price to semi_wholesale_price for existing items if semi is still 0
         UPDATE items SET semi_wholesale_price = retail_price WHERE semi_wholesale_price = 0 AND retail_price > 0;
-
         ALTER TABLE IF EXISTS order_items ALTER COLUMN discount TYPE TEXT USING discount::text;
-
         ALTER TABLE IF EXISTS branches ADD COLUMN IF NOT EXISTS use_ppn BOOLEAN DEFAULT FALSE NOT NULL;
 
-        -- Migrate price/total fields to BIGINT
         ALTER TABLE IF EXISTS items ALTER COLUMN wholesale_price TYPE BIGINT;
         ALTER TABLE IF EXISTS items ALTER COLUMN semi_wholesale_price TYPE BIGINT;
         ALTER TABLE IF EXISTS items ALTER COLUMN retail_price TYPE BIGINT;
-
         ALTER TABLE IF EXISTS orders ALTER COLUMN total_amount TYPE BIGINT;
         ALTER TABLE IF EXISTS orders ALTER COLUMN ppn_amount TYPE BIGINT;
         ALTER TABLE IF EXISTS orders ALTER COLUMN final_total TYPE BIGINT;
-
         ALTER TABLE IF EXISTS order_items ALTER COLUMN price TYPE BIGINT;
         ALTER TABLE IF EXISTS order_items ALTER COLUMN total TYPE BIGINT;
-
         ALTER TABLE IF EXISTS promo_inputs ALTER COLUMN invoice_total TYPE BIGINT;
         ALTER TABLE IF EXISTS promo_inputs ALTER COLUMN calculated_value TYPE BIGINT;
         ALTER TABLE IF EXISTS promo_inputs ALTER COLUMN paid_amount TYPE BIGINT;
-
         ALTER TABLE IF EXISTS payment_confirmations ALTER COLUMN amount TYPE BIGINT;
 
-        -- Data Healing: Ensure all sales_customers have a branch_id (default to the first one)
         UPDATE sales_customers SET branch_id = (SELECT id FROM branches ORDER BY id LIMIT 1) WHERE branch_id IS NULL;
-        
-        -- Ensure total fields are not NULL just in case
         UPDATE sales_customers SET total_point = 0 WHERE total_point IS NULL;
         UPDATE sales_customers SET total_label = 0 WHERE total_label IS NULL;
         UPDATE sales_customers SET total_claim = 0 WHERE total_claim IS NULL;
@@ -292,31 +282,20 @@ app.use((req, res, next) => {
           branch_id INTEGER REFERENCES branches(id)
         );
 
-        -- Migration Fixes: Add missing columns
-        ALTER TABLE IF EXISTS pelanggan_program 
-        ADD COLUMN IF NOT EXISTS brand_code TEXT DEFAULT 'FERIO' NOT NULL;
-
-        ALTER TABLE IF EXISTS transaksi_promo_new 
-        ADD COLUMN IF NOT EXISTS brand_code TEXT DEFAULT 'FERIO' NOT NULL;
-
-        ALTER TABLE IF EXISTS point_saldo 
-        ADD COLUMN IF NOT EXISTS brand_code TEXT DEFAULT 'FERIO' NOT NULL,
+        ALTER TABLE IF EXISTS pelanggan_program ADD COLUMN IF NOT EXISTS brand_code TEXT DEFAULT 'FERIO' NOT NULL;
+        ALTER TABLE IF EXISTS transaksi_promo_new ADD COLUMN IF NOT EXISTS brand_code TEXT DEFAULT 'FERIO' NOT NULL;
+        ALTER TABLE IF EXISTS point_saldo ADD COLUMN IF NOT EXISTS brand_code TEXT DEFAULT 'FERIO' NOT NULL,
         ADD COLUMN IF NOT EXISTS total_ditukar NUMERIC DEFAULT 0 NOT NULL,
         ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW() NOT NULL;
 
-        ALTER TABLE IF EXISTS cutting_progress 
-        ADD COLUMN IF NOT EXISTS status_cair TEXT DEFAULT 'belum' NOT NULL;
-
-        ALTER TABLE IF EXISTS paket_master 
-        ADD COLUMN IF NOT EXISTS end_date TIMESTAMP NOT NULL DEFAULT NOW(),
+        ALTER TABLE IF EXISTS cutting_progress ADD COLUMN IF NOT EXISTS status_cair TEXT DEFAULT 'belum' NOT NULL;
+        ALTER TABLE IF EXISTS paket_master ADD COLUMN IF NOT EXISTS end_date TIMESTAMP NOT NULL DEFAULT NOW(),
         ADD COLUMN IF NOT EXISTS brand_code TEXT DEFAULT 'SEMUA',
         ADD COLUMN IF NOT EXISTS branch_id INTEGER,
         ADD COLUMN IF NOT EXISTS acuan_tanggal TEXT DEFAULT 'faktur' NOT NULL;
 
-        ALTER TABLE IF EXISTS paket_tier
-        ADD COLUMN IF NOT EXISTS reward_percent NUMERIC DEFAULT 0;
+        ALTER TABLE IF EXISTS paket_tier ADD COLUMN IF NOT EXISTS reward_percent NUMERIC DEFAULT 0;
 
-        -- FIX: Drop NOT NULL constraint on branch_id in paket_tier (if it exists)
         DO $$ 
         BEGIN 
           IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='paket_tier' AND column_name='branch_id') THEN
@@ -324,7 +303,6 @@ app.use((req, res, next) => {
           END IF;
         END $$;
 
-        -- NEW POINT HADIAH TABLES
         CREATE TABLE IF NOT EXISTS point_hadiah (
           id SERIAL PRIMARY KEY,
           nama_program TEXT NOT NULL,
@@ -354,7 +332,6 @@ app.use((req, res, next) => {
           branch_id INTEGER NOT NULL REFERENCES branches(id)
         );
 
-        -- Reward Claim: Payment Method Columns
         ALTER TABLE IF EXISTS reward_claim
           ADD COLUMN IF NOT EXISTS metode_pencairan TEXT DEFAULT 'cash',
           ADD COLUMN IF NOT EXISTS tanggal_cair TIMESTAMP,
@@ -365,7 +342,6 @@ app.use((req, res, next) => {
           ADD COLUMN IF NOT EXISTS nomor_faktur_potong TEXT,
           ADD COLUMN IF NOT EXISTS nilai_faktur_potong NUMERIC;
 
-        -- Cashback Bersyarat
         ALTER TABLE IF EXISTS cashback_master
           ADD COLUMN IF NOT EXISTS tipe_syarat TEXT DEFAULT 'tanpa_syarat' NOT NULL,
           ADD COLUMN IF NOT EXISTS masa_berlaku_mulai TIMESTAMP,
@@ -385,7 +361,6 @@ app.use((req, res, next) => {
           UNIQUE(pelanggan_id, cashback_id, periode)
         );
 
-        -- NEW PRINCIPAL SYSTEM TABLES
         CREATE TABLE IF NOT EXISTS principal_master (
           id SERIAL PRIMARY KEY,
           nama TEXT NOT NULL,
@@ -483,7 +458,6 @@ app.use((req, res, next) => {
           updated_at TIMESTAMP DEFAULT NOW() NOT NULL
         );
 
-        -- ADVANCED PROMO LIFECYCLE COLUMNS
         ALTER TABLE IF EXISTS paket_master ADD COLUMN IF NOT EXISTS siklus TEXT DEFAULT 'per_bulan';
         ALTER TABLE IF EXISTS cashback_master ADD COLUMN IF NOT EXISTS siklus TEXT DEFAULT 'per_bulan';
         ALTER TABLE IF EXISTS principal_program ADD COLUMN IF NOT EXISTS siklus TEXT DEFAULT 'per_bulan';
@@ -497,13 +471,8 @@ app.use((req, res, next) => {
           ADD COLUMN IF NOT EXISTS status_periode TEXT DEFAULT 'on_track',
           ADD COLUMN IF NOT EXISTS persen_tercapai NUMERIC DEFAULT 0;
 
-        -- FIX: Missing updated_at in pencairan_rewards
-        ALTER TABLE IF EXISTS pencairan_rewards 
-          ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW() NOT NULL;
-
-        -- Principal Claim Revision Columns
-        ALTER TABLE IF EXISTS principal_claim 
-          ADD COLUMN IF NOT EXISTS catatan_revisi TEXT,
+        ALTER TABLE IF EXISTS pencairan_rewards ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW() NOT NULL;
+        ALTER TABLE IF EXISTS principal_claim ADD COLUMN IF NOT EXISTS catatan_revisi TEXT,
           ADD COLUMN IF NOT EXISTS riwayat_status JSONB DEFAULT '[]'::JSONB;
       `);
       log("Step 0: Migration complete.");
@@ -526,28 +495,22 @@ app.use((req, res, next) => {
       log("Step 3: Vite setup complete.");
     }
 
-    // Global Error Handler
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
       log(`ERROR: ${status} - ${message}`);
       res.status(status).json({ message });
     });
+
+    log("Step 4: Starting HTTP server...");
+    const port = parseInt(process.env.PORT || "5000", 10);
+    httpServer.listen({ port, host: "0.0.0.0" }, () => {
+      log(`serving on port ${port}`);
+    });
+
   } catch (err: any) {
     log(`FATAL ERROR during startup: ${err.message}`);
     console.error(err);
     process.exit(1);
   }
-
-  log("Step 4: Starting HTTP server...");
-  const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
 })();
