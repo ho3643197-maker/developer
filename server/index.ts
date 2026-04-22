@@ -84,6 +84,7 @@ app.use((req, res, next) => {
     log("WARNING: DATABASE_URL is not set!");
   }
 
+  try {
     log("Step 0: Running database migrations...");
     try {
       const { db } = await import("./db");
