@@ -6,3 +6,4 @@ buildCommand = "npm run build"
 startCommand = "npm start"
 healthCheckPath = "/api/ping"
 healthCheckTimeout = 100
+# Update to trigger redeploy: 2026-04-22
